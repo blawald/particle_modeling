@@ -1,6 +1,6 @@
 import os
 import matplotlib.pyplot as plt
-directories = [f for f in os.listdir('.') if (os.path.isdir(f) and f!=".vim")]
+directories = [f for f in os.listdir('.') if (os.path.isdir(f) and f!=".vim" and f!=".git")]
 for current_dir in directories:
     fig = plt.figure()
     ax = fig.add_subplot(211)

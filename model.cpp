@@ -15,7 +15,9 @@ clock_t t_1;
 bool check_time_waste = false;
 bool save_in_xyz = true;
 
-float delta_t = 1/10000.0;
+float delta_t = 1/1000.0;
+
+float r_consid = 4; //epsilon approx 0.15%
 
 const string currentDateTime()
 {
@@ -31,18 +33,20 @@ const string currentDateTime()
 class atom 
 {
 private:
-	float r[3];
-	float v[3];
-	float a[3];
-	float E;
-	float delta[3];
-	float d;
-	float d_squared;
-	float U;
-	float F_val;
+	bool Real; //is atom from real box or from non-existing box
+	float r[3]; //cord
+	float v[3]; //velocity
+	float a[3]; //acceleration
+	float E; //Kinetic Energy
+	float delta[3]; //Vect between atoms
+	float d; //distance between atoms
+	float d_squared;//d^2
+	float U; //Potential Energy
+	float F_val; //F between atoms
+	float box_size; //working box
 public:
 atom() {}
-atom(float (&r0)[3], float (&v0)[3], float (&a0)[3])
+atom(float (&r0)[3], float (&v0)[3], float (&a0)[3], float box_size0, bool Real0)
 	{
 		r[0] = r0[0];
 		r[1] = r0[1];
@@ -53,6 +57,8 @@ atom(float (&r0)[3], float (&v0)[3], float (&a0)[3])
 		a[0] = a0[0];
 		a[1] = a0[1];
 		a[2] = a0[2];
+		box_size = box_size0;
+		Real = Real0;
 	E = (v[0]*v[0]+v[1]*v[1]+v[2]*v[2])/2.0;
 	}
 
@@ -73,6 +79,33 @@ void Set_r(float (&r0)[3]){
 r[0] = r0[0];
 r[1] = r0[1];
 r[2] = r0[2];
+if (Real)
+{
+if (r[0] <= 0)
+{
+r[0] = box_size + r[0];
+}
+if (r[0] > box_size)
+{
+r[0] = r[0] - box_size;
+}
+if (r[1] <= 0)
+{
+r[1] = box_size + r[1];
+}
+if (r[1] > box_size)
+{
+r[1] = r[1] - box_size;
+}
+if (r[2] <= 0)
+{
+r[2] = box_size + r[2];
+}
+if (r[2] > box_size)
+{
+r[2] = r[2] - box_size;
+}
+}
 }
 void Set_v(float (&v0)[3]) {
 v[0] = v0[0];
@@ -95,12 +128,11 @@ void Update_E()
 }
 
 
-void Calculate_F(atom temp_atom)
+void Calculate_F(atom temp_atom, float d_squared)
 {
 	delta[0] = r[0] - temp_atom.r[0];
 	delta[1] = r[1] - temp_atom.r[1];
 	delta[2] = r[2] - temp_atom.r[2];
-	d_squared = delta[1]*delta[1] + delta[2]*delta[2] + delta[0]*delta[0];
 	if (d_squared==0) {d=0;} else {d=pow(d_squared, 0.5);}
 	F_val = -4*(6/(d*d*d*d*d*d*d)-12/(d*d*d*d*d*d*d*d*d*d*d*d*d));
 	//F = -4 epsilon ( 6 a^6/r^7 - 12 a^12/r^13 )
@@ -109,11 +141,7 @@ void Calculate_F(atom temp_atom)
 	a[2] += F_val*delta[2]/d;
 	//cout << delta[0] << " " << delta[1] << " " << delta[2] << endl;
 }
-void Calculate_U(atom temp_atom) {
-	delta[0] = r[0] - temp_atom.r[0];
-	delta[1] = r[1] - temp_atom.r[1];
-	delta[2] = r[2] - temp_atom.r[2];
-	d_squared = delta[1]*delta[1] + delta[2]*delta[2] + delta[0]*delta[0];
+void Calculate_U(float d_squared) {
 	if (d_squared==0) {d=0;} else {d=pow(d_squared, 0.5);}
 	U += 4*(-1/(d*d*d*d*d*d)+1/(d*d*d*d*d*d*d*d*d*d*d*d));
 }
@@ -130,6 +158,7 @@ class Group_Of_Atoms
 	private: 
 		//погуглить про связанные листы
 		vector<atom> atoms;
+		vector<atom> fantom_atoms;
 		string dir_name;
 		float E;
 		float U;
@@ -137,10 +166,13 @@ class Group_Of_Atoms
 		float temp_v[3];
 		float temp_a[3];
 		int length;
+		float d_temp;
+		float box_size;
 	public:
 		Group_Of_Atoms(int n, string filename)
 		{
 		dir_name = filename;
+		box_size = 3*(n-1)+1;
 		float pos[3]{0, 0, 0};
 		float zero_vec[3]{0, 0, 0};
 			for (int i=0; i<n; i++)
@@ -149,10 +181,10 @@ class Group_Of_Atoms
 				{
 					for (int k=0; k<n; k++)
 					{
-						pos[0] = 3*i;
-						pos[1] = 3*j;
-						pos[2] = 3*k;
-					atom temporary_atom(pos, zero_vec, zero_vec);
+						pos[0] = 3*i + 0.5;
+						pos[1] = 3*j + 0.5;
+						pos[2] = 3*k + 0.5;
+					atom temporary_atom(pos, zero_vec, zero_vec, box_size, true);
 					atoms.push_back(temporary_atom);
 					}
 				}
@@ -163,14 +195,55 @@ class Group_Of_Atoms
 	
 		void Group_Info()
 		{
-			int length = atoms.size();
 			for (int i=0; i<length; i++)
 			{
 				atoms[i].All_Info();
 			}
 		}
-
-
+		atom Get_Atom(int index)
+		{
+			return atoms[index];
+		}
+		void Fantom_Group_Info()
+		{
+			for (int i=0; i<fantom_atoms.size(); i++)
+			{
+				fantom_atoms[i].All_Info();
+			}
+		}
+		void Update_Fantom_Atoms()
+		{
+			fantom_atoms.clear();
+			for (int i=0; i<length; i++)
+			{
+				temp_r[0] = atoms[i].Get_r()[0];
+				temp_r[1] = atoms[i].Get_r()[1];
+				temp_r[2] = atoms[i].Get_r()[2];
+				for (float a : {-1, 0, 1})
+				{
+					for (float b : {-1, 0, 1})
+					{
+						for (float c : {-1, 0, 1})
+						{
+							if (a*a + b*b + c*c != 0)
+							{
+							temp_r[0] = atoms[i].Get_r()[0] + box_size*a;
+							temp_r[1] = atoms[i].Get_r()[1] + box_size*b;
+							temp_r[2] = atoms[i].Get_r()[2] + box_size*c;
+							//cout << a << " " << b << " " << c << endl;
+							
+							if ((temp_r[0] <= box_size+r_consid)&&(temp_r[0] > -1*r_consid)&&(temp_r[1] <= box_size+r_consid)&&(temp_r[1] > -1*r_consid)&&(temp_r[2] <= box_size+r_consid)&&(temp_r[2] > -1*r_consid))
+							{
+								atom temporary_atom(temp_r, temp_r, temp_r, box_size, false);
+								fantom_atoms.push_back(temporary_atom);
+							}
+							}
+						}
+					}
+				}
+			}
+			//Fantom_Group_Info();
+		}
 		void One_Velocity_Verlet_Iteration()
 		{
 			E = 0;
@@ -208,14 +281,29 @@ class Group_Of_Atoms
 				temp_a[2] = 0;
 				atoms[i].Set_a(temp_a);
 			}
+			Update_Fantom_Atoms();
 			for (int i=0; i<length; i++) 
 			{
 				t_1 = clock();
 				for (int j = 0; j<length; j++)
 				{
-					if (i!=j)
+					d_temp = (atoms[i].Get_r()[0] - atoms[j].Get_r()[0])*(atoms[i].Get_r()[0] - atoms[j].Get_r()[0]) +  (atoms[i].Get_r()[1] - atoms[j].Get_r()[1])*(atoms[i].Get_r()[1] - atoms[j].Get_r()[1]) + (atoms[i].Get_r()[2] - atoms[j].Get_r()[2])*(atoms[i].Get_r()[2] - atoms[j].Get_r()[2]);	
+					if ((d_temp!=0)&&(d_temp<=r_consid*r_consid))
+					//if ((d_temp!=0))
 					{
-						atoms[i].Calculate_F(atoms[j]);
+						atoms[i].Calculate_F(atoms[j], d_temp);
+					}
+				}
+				for (int j = 0; j<fantom_atoms.size(); j++)
+				{
+					//cout << fantom_atoms[j].Get_r()[0] << endl;
+					//fantom_atoms[j].All_Info();
+					d_temp = (atoms[i].Get_r()[0] - fantom_atoms[j].Get_r()[0])*(atoms[i].Get_r()[0] - fantom_atoms[j].Get_r()[0]) +  (atoms[i].Get_r()[1] - fantom_atoms[j].Get_r()[1])*(atoms[i].Get_r()[1] - fantom_atoms[j].Get_r()[1]) + (atoms[i].Get_r()[2] - fantom_atoms[j].Get_r()[2])*(atoms[i].Get_r()[2] - fantom_atoms[j].Get_r()[2]);
+					//cout << d_temp << endl;
+					if ((d_temp!=0)&&(d_temp<=r_consid*r_consid))
+					//if ((d_temp!=0))
+					{
+						atoms[i].Calculate_F(fantom_atoms[j], d_temp);
 					}
 				}
 				if (check_time_waste)
@@ -245,7 +333,6 @@ class Group_Of_Atoms
 		{
 			E = 0;
 			U = 0;
-			int length = atoms.size();
 			for (int i=0; i<length; i++) 
 			{
 				atoms[i].Update_E();
@@ -253,9 +340,21 @@ class Group_Of_Atoms
 				atoms[i].Set_U(0);
 				for (int j = 0; j<length; j++)
 				{
-					if (i!=j)
+					d_temp = (atoms[i].Get_r()[0] - atoms[j].Get_r()[0])*(atoms[i].Get_r()[0] - atoms[j].Get_r()[0]) +  (atoms[i].Get_r()[1] - atoms[j].Get_r()[1])*(atoms[i].Get_r()[1] - atoms[j].Get_r()[1]) + (atoms[i].Get_r()[2] - atoms[j].Get_r()[2])*(atoms[i].Get_r()[2] - atoms[j].Get_r()[2]);	
+					if ((d_temp!=0)&&(d_temp<=r_consid*r_consid))
+					//if ((d_temp!=0))
 					{
-						atoms[i].Calculate_U(atoms[j]);
+						atoms[i].Calculate_U(d_temp);
+					}
+				}
+				for (int j = 0; j<fantom_atoms.size(); j++)
+				{
+					//cout << fantom_atoms[j].Get_r()[0] << endl;
+					d_temp = (atoms[i].Get_r()[0] - fantom_atoms[j].Get_r()[0])*(atoms[i].Get_r()[0] - fantom_atoms[j].Get_r()[0]) +  (atoms[i].Get_r()[1] - fantom_atoms[j].Get_r()[1])*(atoms[i].Get_r()[1] - fantom_atoms[j].Get_r()[1]) + (atoms[i].Get_r()[2] - fantom_atoms[j].Get_r()[2])*(atoms[i].Get_r()[2] - fantom_atoms[j].Get_r()[2]);
+					if ((d_temp!=0)&&(d_temp<=r_consid*r_consid))
+					//if ((d_temp!=0))
+					{
+						atoms[i].Calculate_U(d_temp);
 					}
 				}
 				U+=atoms[i].Get_U();
@@ -348,7 +447,6 @@ int main()
 	cout << date << endl;
 	std::__fs::filesystem::create_directory(date);
 	}
-	Group_Of_Atoms Group_1(7, date);
-	Group_1.Calculation_And_Writing_Cycle(30);
+	Group_Of_Atoms Group_1(10, date);
+	Group_1.Calculation_And_Writing_Cycle(40);
 }
-

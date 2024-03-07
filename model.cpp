@@ -15,9 +15,9 @@ clock_t t_1;
 bool check_time_waste = false;
 bool save_in_xyz = true;
 
-float delta_t = 1/1000.0;
+double delta_t = 1/1000.0;
 
-float r_consid = 4; //epsilon approx 0.15%
+double r_consid = 5; //epsilon approx 0.15%
 
 const string currentDateTime()
 {
@@ -34,19 +34,19 @@ class atom
 {
 private:
 	bool Real; //is atom from real box or from non-existing box
-	float r[3]; //cord
-	float v[3]; //velocity
-	float a[3]; //acceleration
-	float E; //Kinetic Energy
-	float delta[3]; //Vect between atoms
-	float d; //distance between atoms
-	float d_squared;//d^2
-	float U; //Potential Energy
-	float F_val; //F between atoms
-	float box_size; //working box
+	double r[3]; //cord
+	double v[3]; //velocity
+	double a[3]; //acceleration
+	double E; //Kinetic Energy
+	double delta[3]; //Vect between atoms
+	double d; //distance between atoms
+	double d_squared;//d^2
+	double U; //Potential Energy
+	double F_val; //F between atoms
+	double box_size; //working box
 public:
 atom() {}
-atom(float (&r0)[3], float (&v0)[3], float (&a0)[3], float box_size0, bool Real0)
+atom(double (&r0)[3], double (&v0)[3], double (&a0)[3], double box_size0, bool Real0)
 	{
 		r[0] = r0[0];
 		r[1] = r0[1];
@@ -69,13 +69,13 @@ void Make_Zero_a()
 	r[2] = 0;
 }
 
-float* Get_r() { return r; }
-float* Get_v() { return v; }
-float* Get_a() { return a; }
-float Get_E() { return E; }
-float Get_U() {return U; }
+double* Get_r() { return r; }
+double* Get_v() { return v; }
+double* Get_a() { return a; }
+double Get_E() { return E; }
+double Get_U() {return U; }
 
-void Set_r(float (&r0)[3]){ 
+void Set_r(double (&r0)[3]){ 
 r[0] = r0[0];
 r[1] = r0[1];
 r[2] = r0[2];
@@ -107,18 +107,18 @@ r[2] = r[2] - box_size;
 }
 }
 }
-void Set_v(float (&v0)[3]) {
+void Set_v(double (&v0)[3]) {
 v[0] = v0[0];
 v[1] = v0[1];
 v[2] = v0[2];
 }
-void Set_a(float (&a0)[3]) {
+void Set_a(double (&a0)[3]) {
 a[0] = a0[0];
 a[1] = a0[1];
 a[2] = a0[2];
 }
 
-void Set_U(float U0) {
+void Set_U(double U0) {
 U = U0;
 }
 
@@ -128,7 +128,7 @@ void Update_E()
 }
 
 
-void Calculate_F(atom temp_atom, float d_squared)
+void Calculate_F(atom temp_atom, double d_squared)
 {
 	delta[0] = r[0] - temp_atom.r[0];
 	delta[1] = r[1] - temp_atom.r[1];
@@ -141,7 +141,7 @@ void Calculate_F(atom temp_atom, float d_squared)
 	a[2] += F_val*delta[2]/d;
 	//cout << delta[0] << " " << delta[1] << " " << delta[2] << endl;
 }
-void Calculate_U(float d_squared) {
+void Calculate_U(double d_squared) {
 	if (d_squared==0) {d=0;} else {d=pow(d_squared, 0.5);}
 	U += 4*(-1/(d*d*d*d*d*d)+1/(d*d*d*d*d*d*d*d*d*d*d*d));
 }
@@ -152,7 +152,6 @@ void All_Info()
 	cout << "a: " << a[0] << " " << a[1] << " " << a[2] << endl;
 }
 };
-
 class Group_Of_Atoms
 {
 	private: 
@@ -160,21 +159,21 @@ class Group_Of_Atoms
 		vector<atom> atoms;
 		vector<atom> fantom_atoms;
 		string dir_name;
-		float E;
-		float U;
-		float temp_r[3];
-		float temp_v[3];
-		float temp_a[3];
+		double E;
+		double U;
+		double temp_r[3];
+		double temp_v[3];
+		double temp_a[3];
 		int length;
-		float d_temp;
-		float box_size;
+		double d_temp;
+		double box_size;
 	public:
 		Group_Of_Atoms(int n, string filename)
 		{
 		dir_name = filename;
 		box_size = 3*(n-1)+1;
-		float pos[3]{0, 0, 0};
-		float zero_vec[3]{0, 0, 0};
+		double pos[3]{0, 0, 0};
+		double zero_vec[3]{0, 0, 0};
 			for (int i=0; i<n; i++)
 			{
 				for (int j=0; j<n; j++)
@@ -219,11 +218,11 @@ class Group_Of_Atoms
 				temp_r[0] = atoms[i].Get_r()[0];
 				temp_r[1] = atoms[i].Get_r()[1];
 				temp_r[2] = atoms[i].Get_r()[2];
-				for (float a : {-1, 0, 1})
+				for (double a : {-1, 0, 1})
 				{
-					for (float b : {-1, 0, 1})
+					for (double b : {-1, 0, 1})
 					{
-						for (float c : {-1, 0, 1})
+						for (double c : {-1, 0, 1})
 						{
 							if (a*a + b*b + c*c != 0)
 							{
@@ -248,7 +247,7 @@ class Group_Of_Atoms
 		{
 			E = 0;
 			U = 0;
-			vector<vector<float>> temp;
+			vector<vector<double>> temp;
 			t_0 = clock();
 			for (int i=0; i<length; i++) 
 			{
@@ -448,5 +447,5 @@ int main()
 	std::__fs::filesystem::create_directory(date);
 	}
 	Group_Of_Atoms Group_1(10, date);
-	Group_1.Calculation_And_Writing_Cycle(40);
+	Group_1.Calculation_And_Writing_Cycle(120);
 }

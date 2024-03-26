@@ -43,7 +43,11 @@ private:
 	double d_squared;//d^2
 	double U; //Potential Energy
 	double F_val; //F between atoms
-	double box_size; //working box
+	double box_size; //The size of the box where all real particle live
+	int x_teleportation_shift;
+	int y_teleportation_shift;
+	int z_teleportation_shift;
+	double temp[3];
 public:
 atom() {}
 atom(double (&r0)[3], double (&v0)[3], double (&a0)[3], double box_size0, bool Real0)
@@ -60,6 +64,9 @@ atom(double (&r0)[3], double (&v0)[3], double (&a0)[3], double box_size0, bool R
 		box_size = box_size0;
 		Real = Real0;
 	E = (v[0]*v[0]+v[1]*v[1]+v[2]*v[2])/2.0;
+	x_teleportation_shift = 0;
+	y_teleportation_shift = 0;
+	z_teleportation_shift = 0;
 	}
 
 void Make_Zero_a()
@@ -72,6 +79,13 @@ void Make_Zero_a()
 double* Get_r() { return r; }
 double* Get_v() { return v; }
 double* Get_a() { return a; }
+double* Get_r_with_teleportation_considered()
+{
+	temp[0]=r[0]+box_size*x_teleportation_shift;
+	temp[1]=r[1]+box_size*y_teleportation_shift;
+	temp[2]=r[2]+box_size*z_teleportation_shift;
+	return temp;
+}
 double Get_E() { return E; }
 double Get_U() {return U; }
 
@@ -84,26 +98,32 @@ if (Real)
 if (r[0] <= 0)
 {
 r[0] = box_size + r[0];
+x_teleportation_shift-=1;
 }
 if (r[0] > box_size)
 {
 r[0] = r[0] - box_size;
+x_teleportation_shift+=1;
 }
 if (r[1] <= 0)
 {
 r[1] = box_size + r[1];
+y_teleportation_shift-=1;
 }
 if (r[1] > box_size)
 {
 r[1] = r[1] - box_size;
+y_teleportation_shift+=1;
 }
 if (r[2] <= 0)
 {
 r[2] = box_size + r[2];
+z_teleportation_shift-=1;
 }
 if (r[2] > box_size)
 {
 r[2] = r[2] - box_size;
+z_teleportation_shift+=1;
 }
 }
 }
@@ -152,6 +172,7 @@ void All_Info()
 	cout << "a: " << a[0] << " " << a[1] << " " << a[2] << endl;
 }
 };
+
 class Group_Of_Atoms
 {
 	private: 
@@ -167,6 +188,7 @@ class Group_Of_Atoms
 		int length;
 		double d_temp;
 		double box_size;
+		double V_x;
 	public:
 		Group_Of_Atoms(int n, string filename)
 		{
@@ -190,8 +212,6 @@ class Group_Of_Atoms
 			}
 		length = atoms.size();
 		}
-
-	
 		void Group_Info()
 		{
 			for (int i=0; i<length; i++)
@@ -360,7 +380,6 @@ class Group_Of_Atoms
 			}
 
 		}
-
 		void Write_r_data()
 		{
 			std::ofstream stream;                    
@@ -393,7 +412,22 @@ class Group_Of_Atoms
 			stream.close();
 
 		}
+		void Write_r_with_teleportation_cosidered_data()
+		{
+			std::ofstream stream;                    
+			stream.open(dir_name + "//r_teleportation_considered_data.xyz", std::ios::app);  
+			stream << to_string(length) << std::endl;
+			stream << std::endl;
+			for (int i=0; i<length; i++)
+			{
+				temp_r[0] = atoms[i].Get_r_with_teleportation_considered()[0];
+				temp_r[1] = atoms[i].Get_r_with_teleportation_considered()[1];
+				temp_r[2] = atoms[i].Get_r_with_teleportation_considered()[2];
+				stream << "H	" << temp_r[0] << "	" << temp_r[1] << "	" << temp_r[2] << "	" << endl;
+			}
+			stream.close();
 
+		}
 		void Write_Energy_data(int i)
 		{	
 			std::ofstream stream;                    
@@ -413,8 +447,12 @@ class Group_Of_Atoms
 				outfile2.close();
 				std::ofstream outfile3 (dir_name + "//v_data.xyz");	
 				outfile3.close();
+				std::ofstream outfile4 (dir_name + "//r_teleportation_considered_data.xyz");	
+				outfile4.close();
+				Write_r_data();
 				Write_r_data();
 				Write_v_data();
+				Write_r_with_teleportation_cosidered_data();
 			}
 			int m = time/delta_t;
 			//Group_Info();
@@ -431,6 +469,7 @@ class Group_Of_Atoms
 					Write_r_data();
 					Write_v_data();
 					Write_Energy_data(i);
+					Write_r_with_teleportation_cosidered_data();
 				}
 				}
 			}
@@ -446,6 +485,6 @@ int main()
 	cout << date << endl;
 	std::__fs::filesystem::create_directory(date);
 	}
-	Group_Of_Atoms Group_1(10, date);
-	Group_1.Calculation_And_Writing_Cycle(120);
+	Group_Of_Atoms Group_1(7, date);
+	Group_1.Calculation_And_Writing_Cycle(100);
 }

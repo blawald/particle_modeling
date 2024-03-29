@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <filesystem>
+#include <random>
 using namespace std;
 
 clock_t t_0;
@@ -193,7 +194,10 @@ class Group_Of_Atoms
 		Group_Of_Atoms(int n, string filename)
 		{
 		dir_name = filename;
-		box_size = 3*(n-1)+1;
+		box_size = 4*(n-1)+1;
+		random_device rd;
+    		mt19937 gen(rd());
+    		normal_distribution<double> dist(0, 1.5); 
 		double pos[3]{0, 0, 0};
 		double zero_vec[3]{0, 0, 0};
 			for (int i=0; i<n; i++)
@@ -202,10 +206,13 @@ class Group_Of_Atoms
 				{
 					for (int k=0; k<n; k++)
 					{
-						pos[0] = 3*i + 0.5;
-						pos[1] = 3*j + 0.5;
-						pos[2] = 3*k + 0.5;
-					atom temporary_atom(pos, zero_vec, zero_vec, box_size, true);
+						pos[0] = 4*i + 0.5;
+						pos[1] = 4*j + 0.5;
+						pos[2] = 4*k + 0.5;
+						temp_v[0] = dist(gen);
+						temp_v[1] = dist(gen);
+						temp_v[2] = dist(gen);
+					atom temporary_atom(pos, temp_v, zero_vec, box_size, true);
 					atoms.push_back(temporary_atom);
 					}
 				}
@@ -485,6 +492,6 @@ int main()
 	cout << date << endl;
 	std::__fs::filesystem::create_directory(date);
 	}
-	Group_Of_Atoms Group_1(7, date);
-	Group_1.Calculation_And_Writing_Cycle(100);
+	Group_Of_Atoms Group_1(10, date);
+	Group_1.Calculation_And_Writing_Cycle(300);
 }

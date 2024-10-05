@@ -1,0 +1,6 @@
+Number of particles: 343.0 
+Number of iterations: 100000 
+Simulation time: 100.0 
+Average Kinetic_Energy: 2.1177092419825074 
+\sigma: 2.82E+00 
+\lambda: 22.696313150874033 
